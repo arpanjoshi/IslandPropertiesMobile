@@ -13,11 +13,73 @@
 @end
 
 @implementation AppDelegate
-
+@synthesize downloadFileIndex;
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
+    [NSThread sleepForTimeInterval:3];
+    
     // Override point for customization after application launch.
+    NSString *dropBoxAppKey = @"6hmmdoun2b3wd5s";
+    NSString *dropBoxAppSecret = @"i11xke09s4jdggm";
+    NSString *root = kDBRootDropbox;
+    
+    DBSession* session =
+    [[DBSession alloc] initWithAppKey:dropBoxAppKey appSecret:dropBoxAppSecret root:root];
+    session.delegate = self;
+    [DBSession setSharedSession:session];
+    
+    [DBRequest setNetworkRequestDelegate:self];
+    
+    downloadFileIndex = 0;
+    
     return YES;
+}
+
+- (BOOL)application:(UIApplication *)application handleOpenURL:(NSURL *)url
+{
+    if ([[DBSession sharedSession] handleOpenURL:url]) {
+        if ([[DBSession sharedSession] isLinked]) {
+            [[NSNotificationCenter defaultCenter] postNotification:[NSNotification notificationWithName:@"OPEN_DROPBOX_VIEW" object:nil]];
+        }
+        return YES;
+    }
+    return NO;
+}
+#pragma mark - DBSessionDelegate methods
+- (void)sessionDidReceiveAuthorizationFailure:(DBSession *)session userId:(NSString *)userId
+{
+    relinkUserId = userId;
+    [[[UIAlertView alloc] initWithTitle:@"Dropbox Session Ended" message:@"Do you want to relink?" delegate:self
+                      cancelButtonTitle:@"Cancel" otherButtonTitles:@"Relink", nil] show];
+}
+
+#pragma mark UIAlertViewDelegate methods
+- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)index
+{
+    if (index != alertView.cancelButtonIndex) {
+        UIStoryboard *mainStoryboard = [UIStoryboard storyboardWithName:@"Main" bundle: nil];
+        UINavigationController *controller = (UINavigationController*)[mainStoryboard instantiateViewControllerWithIdentifier:@"NavigationController"];
+        [[DBSession sharedSession] linkFromController:[controller visibleViewController]];
+    }
+    relinkUserId = nil;
+}
+
+#pragma mark - DBNetworkRequestDelegate methods
+static int outstandingRequests;
+- (void)networkRequestStarted
+{
+    outstandingRequests++;
+    if (outstandingRequests == 1) {
+        [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
+    }
+}
+
+- (void)networkRequestStopped
+{
+    outstandingRequests--;
+    if (outstandingRequests == 0) {
+        [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
+    }
 }
 
 - (void)applicationWillResignActive:(UIApplication *)application {
@@ -41,5 +103,7 @@
 - (void)applicationWillTerminate:(UIApplication *)application {
     // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
 }
-
++ (AppDelegate *) sharedAppDelegate {
+    return (AppDelegate *)[UIApplication sharedApplication].delegate;
+}
 @end

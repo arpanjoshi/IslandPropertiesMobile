@@ -8,8 +8,18 @@
 
 #import <UIKit/UIKit.h>
 
-@interface ViewController : UIViewController
 
+@interface ViewController : UIViewController{
+    UIAlertView *alert;
+//   int ipOrAddress;
+//    BOOL loggedIn;
+}
+
+- (IBAction)btnIPATapped:(id)sender;
+- (IBAction)btnSettingsTapped:(id)sender;
+
+- (IBAction)btnAddressTapped:(id)sender;
+- (IBAction)btnSearchTapped:(id)sender;
 
 @end
 
